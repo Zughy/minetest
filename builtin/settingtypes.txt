@@ -2255,7 +2255,7 @@ enable_sound (Sound) bool true
 
 #    Unix timestamp (integer) of when the client last checked for an update
 #    Set this value to "disabled" to never check for updates.
-update_last_checked (Last update check) string
+update_last_checked (Last update check) string disabled
 
 #    Version number which was last seen during an update check.
 #
