@@ -29,11 +29,16 @@ end
 local packages_raw, packages
 
 local function update_packages()
-	pkgmgr.load_all()
+	if not pkgmgr.global_mods then
+		pkgmgr.refresh_globals()
+	end
+	if not pkgmgr.games then
+		pkgmgr.update_gamelist()
+	end
 
 	packages_raw = {}
 	table.insert_all(packages_raw, pkgmgr.games)
-	table.insert_all(packages_raw, pkgmgr.texture_packs)
+	table.insert_all(packages_raw, pkgmgr.get_texture_packs())
 	table.insert_all(packages_raw, pkgmgr.global_mods:get_list())
 
 	local function get_data()
@@ -109,12 +114,11 @@ local function get_formspec(tabview, name, tabdata)
 			modscreenshot = defaulttexturedir .. "no_screenshot.png"
 		end
 
-		local desc = fgettext("No package description available")
-		if selected_pkg.description and selected_pkg.description:trim() ~= "" then
-			desc = core.formspec_escape(selected_pkg.description)
-		end
-
 		local info = core.get_content_info(selected_pkg.path)
+		local desc = fgettext("No package description available")
+		if info.description and info.description:trim() ~= "" then
+			desc = core.formspec_escape(info.description)
+		end
 
 		local title_and_name
 		if selected_pkg.type == "game" then
@@ -202,7 +206,6 @@ local function handle_doubleclick(pkg)
 			core.settings:set("texture_path", pkg.path)
 		end
 		packages = nil
-		pkgmgr.reload_texture_packs()
 
 		mm_game_theme.init()
 		mm_game_theme.set_engine()
@@ -221,7 +224,7 @@ local function handle_buttons(tabview, fields, tabname, tabdata)
 	end
 
 	if fields.btn_contentdb then
-		local dlg = create_contentdb_dlg()
+		local dlg = create_store_dlg()
 		dlg:set_parent(tabview)
 		tabview:hide()
 		dlg:show()
@@ -251,7 +254,7 @@ local function handle_buttons(tabview, fields, tabname, tabdata)
 
 	if fields.btn_mod_mgr_update then
 		local pkg = packages:get_list()[tabdata.selected_pkg]
-		local dlg = create_contentdb_dlg(nil, pkgmgr.get_contentdb_id(pkg))
+		local dlg = create_store_dlg(nil, pkgmgr.get_contentdb_id(pkg))
 		dlg:set_parent(tabview)
 		tabview:hide()
 		dlg:show()
@@ -267,7 +270,6 @@ local function handle_buttons(tabview, fields, tabname, tabdata)
 
 		core.settings:set("texture_path", txp_path)
 		packages = nil
-		pkgmgr.reload_texture_packs()
 
 		mm_game_theme.init()
 		mm_game_theme.set_engine()
@@ -280,7 +282,7 @@ end
 return {
 	name = "content",
 	caption = function()
-		local update_count = core.settings:get_bool("contentdb_enable_updates_indicator") and update_detector.get_count() or 0
+		local update_count = update_detector.get_count()
 		if update_count == 0 then
 			return fgettext("Content")
 		else

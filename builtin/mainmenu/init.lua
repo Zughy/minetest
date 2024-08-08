@@ -1,5 +1,5 @@
 --Minetest
---Copyright (C) 2014 sapier
+--Copyright (C) 2024 Zughy
 --
 --This program is free software; you can redistribute it and/or modify
 --it under the terms of the GNU Lesser General Public License as published by
@@ -15,115 +15,60 @@
 --with this program; if not, write to the Free Software Foundation, Inc.,
 --51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
-mt_color_grey  = "#AAAAAA"
-mt_color_blue  = "#6389FF"
-mt_color_lightblue  = "#99CCFF"
-mt_color_green = "#72FF63"
-mt_color_dark_green = "#25C191"
-mt_color_orange  = "#FF8800"
-mt_color_red = "#FF3300"
-
 local menupath = core.get_mainmenu_path()
 local basepath = core.get_builtin_path()
-defaulttexturedir = core.get_texturepath_share() .. DIR_DELIM .. "base" ..
-					DIR_DELIM .. "pack" .. DIR_DELIM
 
-dofile(basepath .. "common" .. DIR_DELIM .. "filterlist.lua")
-dofile(basepath .. "fstk" .. DIR_DELIM .. "buttonbar.lua")
-dofile(basepath .. "fstk" .. DIR_DELIM .. "dialog.lua")
-dofile(basepath .. "fstk" .. DIR_DELIM .. "tabview.lua")
-dofile(basepath .. "fstk" .. DIR_DELIM .. "ui.lua")
-dofile(menupath .. DIR_DELIM .. "async_event.lua")
-dofile(menupath .. DIR_DELIM .. "common.lua")
-dofile(menupath .. DIR_DELIM .. "serverlistmgr.lua")
-dofile(menupath .. DIR_DELIM .. "game_theme.lua")
-dofile(menupath .. DIR_DELIM .. "content" .. DIR_DELIM .. "init.lua")
+local basetxtrdir = core.get_texturepath_share() .. DIR_DELIM .. "base" ..
+					DIR_DELIM
+defaulttexturedir = basetxtrdir .. "pack" .. DIR_DELIM
+local menutxtrdir = basetxtrdir .. DIR_DELIM .. "menu" .. DIR_DELIM
 
-dofile(menupath .. DIR_DELIM .. "dlg_config_world.lua")
-dofile(menupath .. DIR_DELIM .. "settings" .. DIR_DELIM .. "init.lua")
-dofile(menupath .. DIR_DELIM .. "dlg_create_world.lua")
-dofile(menupath .. DIR_DELIM .. "dlg_delete_content.lua")
-dofile(menupath .. DIR_DELIM .. "dlg_delete_world.lua")
-dofile(menupath .. DIR_DELIM .. "dlg_register.lua")
-dofile(menupath .. DIR_DELIM .. "dlg_rename_modpack.lua")
-dofile(menupath .. DIR_DELIM .. "dlg_version_info.lua")
-dofile(menupath .. DIR_DELIM .. "dlg_reinstall_mtg.lua")
+dofile(menupath .. DIR_DELIM .. "settings/init.lua")
 
-local tabs = {
-	content  = dofile(menupath .. DIR_DELIM .. "tab_content.lua"),
-	about = dofile(menupath .. DIR_DELIM .. "tab_about.lua"),
-	local_game = dofile(menupath .. DIR_DELIM .. "tab_local.lua"),
-	play_online = dofile(menupath .. DIR_DELIM .. "tab_online.lua")
+
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+
+local function get_random_name()
+    return RANDOM_NAME1[math.random(#RANDOM_NAME1)] .. RANDOM_NAME2[math.random(#RANDOM_NAME2)]
+end
+
+core.set_clouds(false)
+core.set_background("background", menutxtrdir .. "mt_bg.png")
+
+local fs = {
+    "formspec_version[6]",
+    "size[5,11,true]",
+    "no_prepend[]",
+    "style_type[image_button;border=false;font=bold;font_size=22]",
+    "style_type[image_button:hovered;fgimg=" .. menutxtrdir .. "mt_menu_button_hov.png]",
+    "bgcolor[;neither]",
+    "image[1.25,1;2.5,2.5;" .. menutxtrdir .. "minetesticon.png]",
+    "container[0.5,7.2]",
+    "image_button[0,0;4,1;" .. menutxtrdir .. "mt_menu_button.png;play;Gioca!]",
+    "image_button[0,1.2;4,1;" .. menutxtrdir .. "mt_menu_button.png;settings;Impostazioni]",
+    "image_button[0,2.4;4,1;" .. menutxtrdir .. "mt_menu_button.png;quit;Esci]",
+    "container_end[]"
 }
 
---------------------------------------------------------------------------------
-local function main_event_handler(tabview, event)
-	if event == "MenuQuit" then
-		core.close()
-	end
-	return true
+core.update_formspec(table.concat(fs,""))
+
+core.button_handler = function(fields)
+    if fields.play then
+        gamedata.playername = get_random_name()
+
+        -- TODO: controlla se quel nome già esiste e in caso, generane un altro
+
+        core.start()
+
+    elseif fields.settings then
+        core.update_formspec(settings_get_formspec({}))
+
+    elseif fields.quit then
+        core.close()
+    end
 end
 
---------------------------------------------------------------------------------
-local function init_globals()
-	-- Init gamedata
-	gamedata.worldindex = 0
 
-	menudata.worldlist = filterlist.create(
-		core.get_worlds,
-		compare_worlds,
-		-- Unique id comparison function
-		function(element, uid)
-			return element.name == uid
-		end,
-		-- Filter function
-		function(element, gameid)
-			return element.gameid == gameid
-		end
-	)
-
-	menudata.worldlist:add_sort_mechanism("alphabetic", sort_worlds_alphabetic)
-	menudata.worldlist:set_sortmode("alphabetic")
-
-	mm_game_theme.init()
-	mm_game_theme.set_engine() -- This is just a fallback.
-
-	-- Create main tabview
-	local tv_main = tabview_create("maintab", {x = 15.5, y = 7.1}, {x = 0, y = 0})
-
-	tv_main:set_autosave_tab(true)
-	tv_main:add(tabs.local_game)
-	tv_main:add(tabs.play_online)
-	tv_main:add(tabs.content)
-	tv_main:add(tabs.about)
-
-	tv_main:set_global_event_handler(main_event_handler)
-	tv_main:set_fixed_size(false)
-
-	local last_tab = core.settings:get("maintab_LAST")
-	if last_tab and tv_main.current_tab ~= last_tab then
-		tv_main:set_tab(last_tab)
-	end
-
-	tv_main:set_end_button({
-		icon = defaulttexturedir .. "settings_btn.png",
-		label = fgettext("Settings"),
-		name = "open_settings",
-		on_click = function(tabview)
-			local dlg = create_settings_dlg()
-			dlg:set_parent(tabview)
-			tabview:hide()
-			dlg:show()
-			return true
-		end,
-	})
-
-	ui.set_default("maintab")
-	tv_main:show()
-	ui.update()
-
-	check_reinstall_mtg()
-	check_new_version()
-end
-
-init_globals()

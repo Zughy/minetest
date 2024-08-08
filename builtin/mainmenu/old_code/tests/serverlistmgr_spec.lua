@@ -1,6 +1,5 @@
-_G.core = {}
+_G.core = {get_once = function(_) end}
 _G.unpack = table.unpack
-_G.check_cache_age = function() return false end
 _G.serverlistmgr = {}
 
 dofile("builtin/common/vector.lua")

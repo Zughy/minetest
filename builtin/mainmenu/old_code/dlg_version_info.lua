@@ -51,13 +51,12 @@ end
 local function version_info_buttonhandler(this, fields)
 	if fields.version_check_remind then
 		-- Erase last known, user will be reminded again at next check
-		cache_settings:set("update_last_known", "")
+		core.settings:set("update_last_known", "")
 		this:delete()
 		return true
 	end
 	if fields.version_check_never then
-		-- clear checked URL
-		core.settings:set("update_information_url", "")
+		core.settings:set("update_last_checked", "disabled")
 		this:delete()
 		return true
 	end
@@ -117,7 +116,7 @@ local function on_version_info_received(json)
 		return
 	end
 
-	local known_update = tonumber(cache_settings:get("update_last_known")) or 0
+	local known_update = tonumber(core.settings:get("update_last_known")) or 0
 
 	-- Format: MMNNPPP (Major, Minor, Patch)
 	local new_number = type(json.latest) == "table" and json.latest.version_code
@@ -136,7 +135,7 @@ local function on_version_info_received(json)
 		return
 	end
 
-	cache_settings:set("update_last_known", tostring(new_number))
+	core.settings:set("update_last_known", tostring(new_number))
 
 	-- Show version info dialog (once)
 	maintab:hide()
@@ -150,20 +149,20 @@ end
 
 function check_new_version()
 	local url = core.settings:get("update_information_url")
-	if url == "" then
+	if core.settings:get("update_last_checked") == "disabled" or
+			url == "" then
 		-- Never show any updates
 		return
 	end
 
-	-- every 2 days
-	if check_cache_age("update_last_checked", 2 * 24 * 3600) then
+	local time_now = os.time()
+	local time_checked = tonumber(core.settings:get("update_last_checked")) or 0
+	if time_now - time_checked < 2 * 24 * 3600 then
+		-- Check interval of 2 entire days
 		return
 	end
-	cache_settings:set("update_last_checked", tostring(os.time()))
 
-	-- Clean old leftovers (this can be removed after 5.9.0 or so)
-	core.settings:remove("update_last_checked")
-	core.settings:remove("update_last_known")
+	core.settings:set("update_last_checked", tostring(time_now))
 
 	core.handle_async(function(params)
 		local http = core.get_http_api()
