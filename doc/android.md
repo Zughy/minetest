@@ -85,7 +85,7 @@ version that was tested at the time this README was drafted; newer/older
 versions may or may not work.
 
 * Android SDK 29
-* Android NDK r21
+* [Android NDK r21](https://github.com/android/ndk/wiki/Unsupported-Downloads#r21e)
 * Android Studio 3 [optional]
 
 Additionally, you'll need to have an Internet connection available on the
